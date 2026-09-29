@@ -52,10 +52,16 @@ async def run_scan() -> dict:
     manual = load_manual()
     posted = load_posted()
     # Shopee primeiro (link já com sua comissão), depois ML, depois manual
-    fresh = [o for o in (shopee + ml + manual) if o.url not in posted]
+    # Anti-repetidos: pula por URL e por código do produto (o shortlink muda
+    # a cada scan, mas o código do produto é estável) — e envia outro no lugar
+    fresh = [o for o in (shopee + ml + manual)
+             if o.url not in posted and not (o.code and o.code in posted)]
     all_offers = pick_balanced(fresh, settings.MAX_OFFERS_PER_SCAN)
     sent = await broadcast(all_offers)
-    posted.update(o.url for o in all_offers)
+    for o in all_offers:
+        posted.add(o.url)
+        if o.code:
+            posted.add(o.code)
     save_posted(posted)
     return {"found_shopee": len(shopee), "found_ml": len(ml), "found_manual": len(manual),
             "new": len(all_offers), "sent": sent,

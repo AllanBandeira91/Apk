@@ -52,6 +52,7 @@ async def fetch_ml(query: str, limit: int = 10) -> list[Offer]:
             image=(it.get("thumbnail") or "").replace("I.jpg", "O.jpg"),
             source="ml",
             category=cat,
+            code=f"ml:{it.get('id', '')}",
         ))
     return out
 

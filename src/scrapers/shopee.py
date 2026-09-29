@@ -13,14 +13,18 @@ from ..config import settings
 ENDPOINT = "https://open-api.affiliate.shopee.com.br/graphql"
 
 SEARCHES = [
-    "vestido longo evangelica",
-    "saia midi evangelica",
-    "conjunto saia blusa feminina",
-    "vestido midi gode",
-    "boneca barbie",
-    "lego infantil",
-    "brinquedo educativo",
-    "hot wheels",
+    "vestido feminino",
+    "blusa feminina",
+    "tenis feminino",
+    "sandalia feminina",
+    "bolsa feminina",
+    "kit brinco folheado",
+    "relogio feminino",
+    "roupa bebe",
+    "kit higiene bebe",
+    "tenis infantil",
+    "lego",
+    "boneca",
 ]
 
 QUERY = """
@@ -98,6 +102,7 @@ def _to_offer(n: dict, url: str) -> Offer | None:
         title=title, price=price, original_price=orig,
         url=url, image=n.get("imageUrl") or "",
         source="shopee", category=cat,
+        code=f"shopee:{n.get('itemId') or n.get('shopId')}",
     )
 
 
@@ -119,7 +124,7 @@ async def search(keyword: str, limit: int = 10, sort_type: int = 2) -> list[Offe
     return out
 
 
-async def scan_all(min_discount: int = 0, per_query: int = 8) -> list[Offer]:
+async def scan_all(min_discount: int = 0, per_query: int = 5) -> list[Offer]:
     found: list[Offer] = []
     errors: list[str] = []
     for q in SEARCHES:

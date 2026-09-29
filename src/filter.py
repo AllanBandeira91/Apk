@@ -1,4 +1,5 @@
-"""Modelo + filtro nicho: roupa modesta/evangélica + brinquedos."""
+"""Modelo + filtro: moda geral (sem roupa quase-pelada) + bebê/brinquedos."""
+import re
 from dataclasses import dataclass
 
 @dataclass
@@ -10,6 +11,7 @@ class Offer:
     image: str
     source: str  # ml | shopee | amazon | aliexpress
     category: str = ""  # moda | brinquedos
+    code: str = ""  # identidade estável do produto (ex: shopee:123). Não muda entre scans.
 
     @property
     def discount_pct(self) -> float:
@@ -17,53 +19,72 @@ class Offer:
             return 0.0
         return round((1 - self.price / self.original_price) * 100, 1)
 
-# Termos que APROVAM roupa modesta
-MODESTA_OK = [
-    "vestido longo", "vestido midi", "vestido evangélica", "vestido evangelica",
-    "saia longa", "saia midi", "saia evangélica", "conjunto modesto",
-    "blusa social", "camisa social feminina", "blazer feminino",
-    "vestido godê", "vestido plus size longo", "saia plissada",
-    "midi", "longo", "godê", "ciganinha com manga", "manga longa",
-    "conjunto saia e blusa", "macacão longo", "pantalona",
+# Roupa/quase-pelada: sempre bloqueia
+REVEAL_BLOCK = [
+    "biquini", "biquíni", "maiô", "sunga",
+    "lingerie", "calcinha", "sutiã", "sutia", "espartilho", "cinta liga",
+    "transparente", "decote profundo", "decotad", "fenda alta",
+    "fio dental", "body cavado", "tomara que caia", "fantasia sexy",
 ]
 
-# Termos que REPROVAM (não é perfil crente)
-MODESTA_BLOCK = [
-    "mini saia", "minissaia", "short jeans curto", "short saia", "short-saia",
-    "cropped", "tomara que caia", "tomara",
-    "decote profundo", "decotad", "fenda alta", "frente única", "frente unica",
-    "body cavado", "biquini", "biquíni",
-    "maiô cavado", "lingerie", "transparente", "tubinho curto",
+# Moda geral: roupa, calçado, joia/bijuteria, relógio, bolsa
+MODA_OK = [
+    "vestido", "saia", "blusa", "camisa", "camiseta", "regata", "cropped",
+    "calça", "calca", "short", "bermuda", "legging", "jaqueta", "casaco",
+    "moletom", "conjunto", "macacão", "macacao", "jardineira", "pijama",
+    "tenis", "tênis", "sapato", "sapatilha", "sandalia", "sandália",
+    "chinelo", "bota", "salto", "mocassim", "chuteira", "sapatênis", "sapatenis",
+    "brinco", "anel", "colar", "pulseira", "tornozeleira", "relogio", "relógio",
+    "smartwatch", "bolsa", "mochila", "carteira", "oculos", "óculos",
+    "cinto", "chapeu", "chapéu", "bone", "boné", "bijuteria", "folhead",
+    "prata 925", "semijoia", "semijoias",
 ]
 
+# Bebê
+BEBE_OK = [
+    "fralda", "mamadeira", "chupeta", "mordedor", "babador",
+    "carrinho de bebe", "carrinho de bebê", "berco", "berço",
+    "banheira", "kit berco", "kit berço", "trocador",
+    "bolsa maternidade", "kit higiene bebe", "kit higiene bebê",
+    "roupa bebe", "roupa bebê", "body bebe", "body bebê",
+    "mamadeira", "esterilizador", "bomba tira-leite", "cadeirinha",
+    "bebê conforto", "bebe conforto", "andador bebe", "chocalho",
+]
+
+# Brinquedos criança
 BRINQ_OK = [
-    "lego", "barbie", "carrinho", "boneca", "quebra-cabeça", "quebra cabeça",
-    "jogo educativo", "massinha", "play doh", "hot wheels", "pelúcia",
-    "patinete", "bicicleta infantil", "blocos de montar", "dinossauro brinquedo",
+    "lego", "barbie", "carrinho", "boneca", "boneco",
+    "quebra-cabeça", "quebra cabeca", "jogo educativo", "brinquedo educativo",
+    "massinha", "play doh", "hot wheels", "pelucia", "pelúcia",
+    "patinete", "blocos de montar", "dinossauro brinquedo",
     "cozinha infantil", "baby alive", "nerf", "pista",
+    "bicicleta infantil", "bola", "piscina infantil", "barraca infantil",
 ]
 
-BRINQ_BLOCK = ["colecionável adulto", "funko pop raro", "+18", "airsoft", "arma de pressão"]
+KID_CTX = ["infantil", "criança", "crianca", "kids", "menina", "menino"]
+
+
+def _has(t: str, words: list[str]) -> bool:
+    return any(w in t for w in words)
 
 
 def classify(title: str) -> str | None:
     """Retorna 'moda' | 'brinquedos' | None (rejeitado)."""
     t = title.lower()
 
-    if any(b in t for b in MODESTA_BLOCK + BRINQ_BLOCK):
+    if _has(t, REVEAL_BLOCK):
         return None
-
-    is_moda = any(k in t for k in MODESTA_OK) or any(
-        w in t for w in ["vestido", "saia", "blusa feminina", "conjunto feminino", "macacão feminino"]
-    )
-    # Evita vestido de festa curto transparente etc: exige sinal de modéstia OU tamanho plus/midi/longo
-    if is_moda:
-        if any(w in t for w in ["vestido", "saia", "macacão", "conjunto", "blusa", "blazer", "pantalona"]):
-            return "moda"
-
-    if any(k in t for k in BRINQ_OK) or any(w in t for w in ["brinquedo", "infantil", "criança", "lego", "boneca"]):
+    if _has(t, BEBE_OK) or re.search(r"\bbeb[eê]\b|\brec[eé]m-nascido\b", t):
+        return "brinquedos"  # \b evita falso positivo tipo "bebedouro"
+    if _has(t, BRINQ_OK):
         return "brinquedos"
-
+    if _has(t, MODA_OK):
+        # tênis/vestido infantil vai pra prateleira kids
+        if _has(t, KID_CTX):
+            return "brinquedos"
+        return "moda"
+    if _has(t, KID_CTX) and _has(t, ["brinquedo", "jogo", "diversao", "diversão"]):
+        return "brinquedos"
     return None
 
 
