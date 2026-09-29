@@ -26,6 +26,25 @@ async def _safe_scan(fn, key: str, out: dict) -> list:
         out[key] = str(e)
         return []
 
+def pick_balanced(offers: list, limit: int) -> list:
+    """Alterna moda/brinquedos p/ todo scan ter variedade (não só o maior desconto)."""
+    buckets: dict[str, list] = {}
+    for o in offers:
+        buckets.setdefault(o.category or "outros", []).append(o)
+    order = [c for c in ("moda", "brinquedos") if c in buckets]
+    order += [c for c in buckets if c not in order]
+    picked, i = [], 0
+    while len(picked) < limit and any(buckets[c] for c in order):
+        for c in order:
+            if len(picked) >= limit:
+                break
+            if buckets[c]:
+                picked.append(buckets[c].pop(0))
+        i += 1
+        if i > limit + 10:
+            break
+    return picked
+
 async def run_scan() -> dict:
     out: dict = {}
     shopee = await _safe_scan(scan_shopee, "shopee_note", out)
@@ -33,7 +52,8 @@ async def run_scan() -> dict:
     manual = load_manual()
     posted = load_posted()
     # Shopee primeiro (link já com sua comissão), depois ML, depois manual
-    all_offers = [o for o in (shopee + ml + manual) if o.url not in posted][: settings.MAX_OFFERS_PER_SCAN]
+    fresh = [o for o in (shopee + ml + manual) if o.url not in posted]
+    all_offers = pick_balanced(fresh, settings.MAX_OFFERS_PER_SCAN)
     sent = await broadcast(all_offers)
     posted.update(o.url for o in all_offers)
     save_posted(posted)

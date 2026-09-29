@@ -13,8 +13,8 @@ class Settings(BaseSettings):
     SHOPEE_SECRET: str = ""
     AMAZON_TAG: str = ""
     ALIEXPRESS_AFF_ID: str = ""
-    SCAN_INTERVAL_MIN: int = 120
-    MAX_OFFERS_PER_SCAN: int = 6
+    SCAN_INTERVAL_MIN: int = 10
+    MAX_OFFERS_PER_SCAN: int = 2
     MIN_DISCOUNT_PCT: int = 20
 
     @property
