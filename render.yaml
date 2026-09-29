@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: whatsapp-promos-auto
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: EVOLUTION_API_URL
+        sync: false
+      - key: EVOLUTION_APIKEY
+        sync: false
+      - key: EVOLUTION_INSTANCE
+        sync: false
+      - key: TARGET_GROUPS
+        sync: false
+      - key: ML_AFFILIATE_TAG
+        sync: false
+      - key: SHOPEE_AFFILIATE_ID
+        sync: false
+      - key: AMAZON_TAG
+        sync: false
+      - key: ALIEXPRESS_AFF_ID
+        sync: false
