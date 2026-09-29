@@ -29,8 +29,10 @@ MODESTA_OK = [
 
 # Termos que REPROVAM (não é perfil crente)
 MODESTA_BLOCK = [
-    "mini saia", "minissaia", "short jeans curto", "cropped", "tomara que caia",
-    "decote profundo", "fenda alta", "body cavado", "biquini", "biquíni",
+    "mini saia", "minissaia", "short jeans curto", "short saia", "short-saia",
+    "cropped", "tomara que caia", "tomara",
+    "decote profundo", "decotad", "fenda alta", "frente única", "frente unica",
+    "body cavado", "biquini", "biquíni",
     "maiô cavado", "lingerie", "transparente", "tubinho curto",
 ]
 
