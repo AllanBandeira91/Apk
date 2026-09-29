@@ -43,12 +43,18 @@ async def _safe_scan(fn, key: str, out: dict) -> list:
         return []
 
 def pick_balanced(offers: list, limit: int) -> list:
-    """Alterna moda/brinquedos p/ todo scan ter variedade (não só o maior desconto)."""
+    """Alterna entre as seções (moda/calcados/acessorios/kids/bebe),
+    girando a seção inicial a cada scan p/ todas aparecerem."""
     buckets: dict[str, list] = {}
     for o in offers:
         buckets.setdefault(o.category or "outros", []).append(o)
-    order = [c for c in ("moda", "brinquedos") if c in buckets]
-    order += [c for c in buckets if c not in order]
+    cats = sorted(buckets.keys())
+    try:
+        st = json.loads(pathlib.Path("scan_state.json").read_text())
+    except Exception:
+        st = {}
+    start = int(st.get("pick", 0)) % max(len(cats), 1)
+    order = cats[start:] + cats[:start]
     picked, i = [], 0
     while len(picked) < limit and any(buckets[c] for c in order):
         for c in order:
@@ -59,6 +65,11 @@ def pick_balanced(offers: list, limit: int) -> list:
         i += 1
         if i > limit + 10:
             break
+    try:
+        st["pick"] = int(st.get("pick", 0)) + 1
+        pathlib.Path("scan_state.json").write_text(json.dumps(st))
+    except Exception:
+        pass
     return picked
 
 async def run_scan() -> dict:

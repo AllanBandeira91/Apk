@@ -46,12 +46,14 @@ BATCH = 8  # buscas por scan (rodízio: cobre tudo ao longo do dia sem estourar 
 def get_searches() -> list[str]:
     """Rodízio das buscas: cada scan pega um lote diferente."""
     try:
-        off = json.loads(STATE_FILE.read_text()).get("offset", 0) % len(SEARCHES)
+        st = json.loads(STATE_FILE.read_text())
+        off = int(st.get("offset", 0)) % len(SEARCHES)
     except Exception:
-        off = 0
+        st, off = {}, 0
     batch = [SEARCHES[(off + i) % len(SEARCHES)] for i in range(BATCH)]
     try:
-        STATE_FILE.write_text(json.dumps({"offset": (off + BATCH) % len(SEARCHES)}))
+        st["offset"] = (off + BATCH) % len(SEARCHES)
+        STATE_FILE.write_text(json.dumps(st))
     except Exception:
         pass
     return batch

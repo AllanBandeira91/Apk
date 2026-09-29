@@ -29,17 +29,27 @@ REVEAL_BLOCK = [
     "fio dental", "body cavado", "tomara que caia", "fantasia sexy",
 ]
 
-# Moda geral: roupa, calçado, joia/bijuteria, relógio, bolsa
+# Calçados (adulto e infantil — tênis não é brinquedo)
+CALC_OK = [
+    "tenis", "tênis", "sapato", "sapatilha", "sandalia", "sandália",
+    "chinelo", "bota", "salto", "mocassim", "chuteira", "sapatenis", "sapatênis",
+]
+
+# Acessórios M/F
+ACESS_OK = [
+    "brinco", "anel", "colar", "pulseira", "tornozeleira",
+    "relogio", "relógio", "smartwatch",
+    "bolsa", "mochila", "carteira", "oculos", "óculos",
+    "cinto", "chapeu", "chapéu", "bone", "boné",
+    "bijuteria", "folhead", "prata 925", "semijoia", "semijoias", "tiara", "colares", "aneis", "anéis", "alianca", "aliança", "aliancas",
+]
+
+# Moda (roupas)
 MODA_OK = [
     "vestido", "saia", "blusa", "camisa", "camiseta", "regata", "cropped",
     "calça", "calca", "short", "bermuda", "legging", "jaqueta", "casaco",
     "moletom", "conjunto", "macacão", "macacao", "jardineira", "pijama",
-    "tenis", "tênis", "sapato", "sapatilha", "sandalia", "sandália",
-    "chinelo", "bota", "salto", "mocassim", "chuteira", "sapatênis", "sapatenis",
-    "brinco", "anel", "colar", "pulseira", "tornozeleira", "relogio", "relógio",
-    "smartwatch", "bolsa", "mochila", "carteira", "oculos", "óculos",
-    "cinto", "chapeu", "chapéu", "bone", "boné", "bijuteria", "folhead",
-    "prata 925", "semijoia", "semijoias", "touca", "gorro", "meia", "tiara",
+    "touca", "gorro", "meia",
 ]
 
 # Bebê
@@ -71,24 +81,37 @@ def _has(t: str, words: list[str]) -> bool:
     return any(w in t for w in words)
 
 
+def _hasw(t: str, words: list[str]) -> bool:
+    """Casa palavra inteira (+plural): 'bone' não pega 'boneca',
+    'colar' não pega 'escolar', 'anel' não pega 'painel'."""
+    return re.search(r"\b(?:" + "|".join(re.escape(w) + "s?" for w in words) + r")\b", t) is not None
+
+
 def classify(title: str) -> str | None:
-    """Retorna 'moda' | 'brinquedos' | None (rejeitado)."""
+    """Retorna 'moda' | 'calcados' | 'acessorios' | 'kids' | 'bebe' | None."""
     t = title.lower()
 
     if _has(t, REVEAL_BLOCK):
         return None
+    # Bebê primeiro (tênis/sapatinho de bebê é bebê, não calçado)
     if _has(t, BEBE_OK) or re.search(r"\bbeb[eê]\b|\brec[eé]m-nascido\b", t):
-        return "brinquedos"  # \b evita falso positivo tipo "bebedouro"
-    if _has(t, BRINQ_OK):
-        return "brinquedos"
-    if _has(t, MODA_OK):
-        # tênis/vestido infantil vai pra prateleira kids
-        if _has(t, KID_CTX):
-            return "brinquedos"
+        return "bebe"
+    if _hasw(t, CALC_OK):
+        return "calcados"
+    if _hasw(t, ACESS_OK):
+        return "acessorios"
+    if _hasw(t, MODA_OK):
         return "moda"
+    if _has(t, BRINQ_OK):
+        return "kids"
     if _has(t, KID_CTX) and _has(t, ["brinquedo", "jogo", "diversao", "diversão"]):
-        return "brinquedos"
+        return "kids"
     return None
+
+
+LABELS = {"moda": ("👗", "MODA"), "calcados": ("👟", "CALÇADOS"),
+          "acessorios": ("⌚", "ACESSÓRIOS"), "kids": ("🧸", "KIDS"),
+          "bebe": ("🍼", "BEBÊ")}
 
 
 def norm_title(t: str) -> str:
@@ -111,11 +134,11 @@ def titles_match(a: str, b: str, thresh: float = 0.88) -> bool:
 
 
 def format_msg(o: Offer) -> str:
-    emoji = "👗" if o.category == "moda" else "🧸"
+    emoji, label = LABELS.get(o.category, ("🏷️", o.category.upper() or "OFERTA"))
     desc = f" ({o.discount_pct:.0f}% OFF)" if o.discount_pct else ""
     de = f"~De R$ {o.original_price:.2f}~ → " if o.original_price and o.original_price > o.price else ""
     return (
-        f"{emoji} *OFERTA {o.category.upper()}*{desc}\n"
+        f"{emoji} *OFERTA {label}*{desc}\n"
         f"*{o.title[:120]}*\n\n"
         f"💰 {de}*Por R$ {o.price:.2f}*\n"
         f"🏪 Via {o.source.upper()}\n\n"
