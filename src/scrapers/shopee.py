@@ -5,6 +5,8 @@ Auth: SHA256(appId + timestamp + payload + secret) no header Authorization.
 Requer SHOPEE_APPID + SHOPEE_SECRET no .env / Render (nunca commitar).
 """
 import hashlib
+import json
+import pathlib
 import time
 import httpx
 from ..filter import Offer, classify
@@ -27,7 +29,28 @@ SEARCHES = [
     "tenis infantil",
     "lego",
     "boneca",
+    "camisa masculina",
+    "bermuda masculina",
+    "tenis masculino",
+    "bone masculino",
 ]
+
+STATE_FILE = pathlib.Path("scan_state.json")
+BATCH = 8  # buscas por scan (rodízio: cobre tudo ao longo do dia sem estourar timeout)
+
+
+def get_searches() -> list[str]:
+    """Rodízio das buscas: cada scan pega um lote diferente."""
+    try:
+        off = json.loads(STATE_FILE.read_text()).get("offset", 0) % len(SEARCHES)
+    except Exception:
+        off = 0
+    batch = [SEARCHES[(off + i) % len(SEARCHES)] for i in range(BATCH)]
+    try:
+        STATE_FILE.write_text(json.dumps({"offset": (off + BATCH) % len(SEARCHES)}))
+    except Exception:
+        pass
+    return batch
 
 QUERY = """
 query($keyword: String, $sortType: Int, $page: Int, $limit: Int) {
@@ -129,7 +152,7 @@ async def search(keyword: str, limit: int = 10, sort_type: int = 2) -> list[Offe
 async def scan_all(min_discount: int = 0, per_query: int = 5) -> list[Offer]:
     found: list[Offer] = []
     errors: list[str] = []
-    for q in SEARCHES:
+    for q in get_searches():
         try:
             found += await search(q, per_query)
         except Exception as e:

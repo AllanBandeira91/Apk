@@ -1,4 +1,5 @@
 .env
 posted.json
+scan_state.json
 __pycache__/
 *.pyc
