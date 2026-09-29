@@ -33,6 +33,30 @@ def home():
 async def scan():
     return await run_scan()
 
+@app.get("/qr", response_class=HTMLResponse)
+def qr():
+    """Mostra o QR da Evolution p/ escanear com o celular. Auto-atualiza."""
+    import httpx
+    if not settings.EVOLUTION_API_URL:
+        return "Configure EVOLUTION_API_URL no Render."
+    try:
+        r = httpx.get(
+            f"{settings.EVOLUTION_API_URL.rstrip('/')}/instance/connect/{settings.EVOLUTION_INSTANCE}",
+            headers={"apikey": settings.EVOLUTION_APIKEY}, timeout=60)
+        d = r.json()
+    except Exception as e:
+        return f"Falha ao buscar QR: {e}"
+    img = d.get("base64", "")
+    if not img:
+        return f"Sem QR no momento: {d}"
+    return f"""<html><head><meta http-equiv="refresh" content="25"></head>
+    <body style="font-family:sans-serif;text-align:center">
+    <h2>📱 Escaneie no WhatsApp</h2>
+    <p>Aparelhos conectados → Conectar aparelho → aponte a câmera</p>
+    <img src="{img}" width="320">
+    <p><small>Atualiza sozinho a cada 25s. Se expirar, aguarde recarregar.</small></p>
+    </body></html>"""
+
 @app.get("/preview")
 async def preview():
     from .scrapers.shopee import scan_all as scan_shopee
