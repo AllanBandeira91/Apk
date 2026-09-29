@@ -8,7 +8,9 @@ class Settings(BaseSettings):
     TARGET_GROUPS: str = ""  # grupo(s) Shopee: id1@g.us,id2@g.us
     ML_GROUPS: str = ""  # grupo(s) Mercado Livre: id@g.us
     ML_AFFILIATE_TAG: str = ""
-    ML_ACCESS_TOKEN: str = ""  # token OAuth do app ML (necessário p/ busca API)
+    ML_CLIENT_ID: str = ""  # OAuth ML (renovação automática do token)
+    ML_CLIENT_SECRET: str = ""
+    ML_REFRESH_TOKEN: str = ""  # colado 1x via /callback, bot renova sozinho
     SHOPEE_AFFILIATE_ID: str = ""
     SHOPEE_APPID: str = ""  # Affiliate Open API (nunca commitar o secret)
     SHOPEE_SECRET: str = ""
