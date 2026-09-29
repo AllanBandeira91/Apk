@@ -34,6 +34,44 @@ async def send_to_group(group_jid: str, offer: Offer) -> bool:
             print("send fail:", e)
             return False
 
+async def group_history(jid: str, limit: int = 100) -> tuple[set, list]:
+    """Lê msgs recentes do grupo (best-effort): retorna (urls, títulos)."""
+    import re as _re
+    if not settings.EVOLUTION_API_URL:
+        return set(), []
+    base = settings.EVOLUTION_API_URL.rstrip("/")
+    urls, titles = set(), []
+    async with httpx.AsyncClient(timeout=30) as c:
+        try:
+            r = await c.post(
+                f"{base}/chat/findMessages/{settings.EVOLUTION_INSTANCE}",
+                headers=evolution_headers(),
+                json={"where": {"key": {"remoteJid": jid}}, "limit": limit},
+            )
+            if r.status_code >= 300:
+                return set(), []
+            data = r.json()
+        except Exception:
+            return set(), []
+    found: list[str] = []
+
+    def walk(x):
+        if isinstance(x, str):
+            found.append(x)
+        elif isinstance(x, dict):
+            for v in x.values():
+                walk(v)
+        elif isinstance(x, list):
+            for v in x:
+                walk(v)
+
+    walk(data)
+    for s in found:
+        urls.update(_re.findall(r"https?://\S+", s))
+        titles += [t.strip() for t in _re.findall(r"\*(.+?)\*", s) if len(t.strip()) > 10]
+    return urls, titles
+
+
 async def broadcast(offers: list[Offer], groups: list[str] | None = None) -> tuple[int, list[Offer]]:
     """Retorna (nº msgs enviadas, ofertas entregues em ≥1 grupo)."""
     delivered: list[Offer] = []

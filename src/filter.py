@@ -1,6 +1,8 @@
 """Modelo + filtro: moda geral (sem roupa quase-pelada) + bebê/brinquedos."""
 import re
+import unicodedata
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 
 @dataclass
 class Offer:
@@ -87,6 +89,25 @@ def classify(title: str) -> str | None:
     if _has(t, KID_CTX) and _has(t, ["brinquedo", "jogo", "diversao", "diversão"]):
         return "brinquedos"
     return None
+
+
+def norm_title(t: str) -> str:
+    """Normaliza p/ comparar: sem acento, minúsculo, só letras/números."""
+    t = unicodedata.normalize("NFKD", t.lower())
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", t)).strip()
+
+
+def titles_match(a: str, b: str, thresh: float = 0.88) -> bool:
+    """True se títulos (já normalizados) são o mesmo item ou quase."""
+    if not a or not b or a == b:
+        return bool(a and a == b)
+    if len(a) < 8 or len(b) < 8:
+        return False
+    short, long = (a, b) if len(a) <= len(b) else (b, a)
+    if len(short) >= 10 and short in long and len(short) / len(long) > 0.6:
+        return True
+    return SequenceMatcher(None, a, b).ratio() >= thresh
 
 
 def format_msg(o: Offer) -> str:

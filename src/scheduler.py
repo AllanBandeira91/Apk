@@ -1,12 +1,16 @@
 """Varredura agendada: Shopee API + ML API + planilha manual -> filtra -> posta."""
-import json, pathlib
+import json
+import pathlib
+import time
 from .config import settings
+from .filter import norm_title, titles_match
 from .scrapers.mercadolivre import scan_all as scan_ml
 from .scrapers.shopee import scan_all as scan_shopee
 from .scrapers.manual import load_manual
-from .sender import broadcast
+from .sender import broadcast, group_history
 
 POSTED = pathlib.Path("posted.json")
+HISTORY = pathlib.Path("sent_history.json")  # chave(url/código) -> título normalizado
 
 def load_posted() -> set:
     if POSTED.exists():
@@ -18,6 +22,18 @@ def load_posted() -> set:
 
 def save_posted(urls: set):
     POSTED.write_text(json.dumps(sorted(urls)[-500:]))
+
+def load_history() -> dict:
+    if HISTORY.exists():
+        try:
+            return json.loads(HISTORY.read_text())
+        except Exception:
+            return {}
+    return {}
+
+def save_history(h: dict):
+    items = sorted(h.items(), key=lambda kv: kv[1].get("ts", 0) if isinstance(kv[1], dict) else 0)[-2000:]
+    HISTORY.write_text(json.dumps(dict(items), ensure_ascii=False))
 
 async def _safe_scan(fn, key: str, out: dict) -> list:
     try:
@@ -51,11 +67,30 @@ async def run_scan() -> dict:
     ml = await _safe_scan(scan_ml, "ml_note", out)
     manual = load_manual()
     posted = load_posted()
-    # Shopee primeiro (link já com sua comissão), depois ML, depois manual
-    # Anti-repetidos: pula por URL e por código do produto (o shortlink muda
-    # a cada scan, mas o código do produto é estável) — e envia outro no lugar
-    fresh = [o for o in (shopee + ml + manual)
-             if o.url not in posted and not (o.code and o.code in posted)]
+    history = load_history()
+    # Checa o histórico REAL dos grupos antes de enviar (links + títulos)
+    group_urls: set = set()
+    group_titles: list = []
+    for jid in settings.groups + settings.ml_groups:
+        try:
+            u, t = await group_history(jid)
+            group_urls |= u
+            group_titles += [norm_title(x) for x in t]
+        except Exception:
+            continue
+    known_titles = [v["t"] if isinstance(v, dict) else v for v in history.values()] + group_titles
+
+    def is_dupe(o) -> bool:
+        # 1) link ou código já enviado
+        if o.url in posted or o.url in group_urls or (o.code and o.code in posted):
+            return True
+        # 2) título igual ou quase igual a algo já postado no grupo
+        nt = norm_title(o.title)
+        return any(titles_match(nt, k) for k in known_titles)
+
+    candidates = list(shopee + ml + manual)
+    fresh = [o for o in candidates if not is_dupe(o)]
+    skipped = len(candidates) - len(fresh)
     # Grupo 1 (Shopee) e Grupo 2 (ML): cada um com seu revezamento moda+kids
     g1 = pick_balanced([o for o in fresh if o.source != "ml"], settings.MAX_OFFERS_PER_SCAN)
     g2 = pick_balanced([o for o in fresh if o.source == "ml"], settings.MAX_OFFERS_PER_SCAN)
@@ -67,9 +102,12 @@ async def run_scan() -> dict:
         posted.add(o.url)
         if o.code:
             posted.add(o.code)
+        history[o.code or o.url] = {"t": norm_title(o.title), "ts": int(time.time())}
     save_posted(posted)
+    save_history(history)
     all_offers = g1 + g2
     return {"found_shopee": len(shopee), "found_ml": len(ml), "found_manual": len(manual),
             "new": len(all_offers), "sent": sent1 + sent2,
             "failed": len(all_offers) - len(delivered),
+            "skipped_dupes": skipped,
             "titles": [o.title for o in all_offers], **out}
