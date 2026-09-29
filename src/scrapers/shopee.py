@@ -21,6 +21,8 @@ SEARCHES = [
     "kit brinco folheado",
     "relogio feminino",
     "roupa bebe",
+    "sapatinho bebe",
+    "relogio infantil",
     "kit higiene bebe",
     "tenis infantil",
     "lego",

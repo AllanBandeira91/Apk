@@ -37,7 +37,7 @@ MODA_OK = [
     "brinco", "anel", "colar", "pulseira", "tornozeleira", "relogio", "relógio",
     "smartwatch", "bolsa", "mochila", "carteira", "oculos", "óculos",
     "cinto", "chapeu", "chapéu", "bone", "boné", "bijuteria", "folhead",
-    "prata 925", "semijoia", "semijoias",
+    "prata 925", "semijoia", "semijoias", "touca", "gorro", "meia", "tiara",
 ]
 
 # Bebê
@@ -49,6 +49,7 @@ BEBE_OK = [
     "roupa bebe", "roupa bebê", "body bebe", "body bebê",
     "mamadeira", "esterilizador", "bomba tira-leite", "cadeirinha",
     "bebê conforto", "bebe conforto", "andador bebe", "chocalho",
+    "sapatinho", "sandalhinha", "cueiro", "pagao", "pagão",
 ]
 
 # Brinquedos criança
