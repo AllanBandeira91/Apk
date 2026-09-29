@@ -56,14 +56,20 @@ async def run_scan() -> dict:
     # a cada scan, mas o código do produto é estável) — e envia outro no lugar
     fresh = [o for o in (shopee + ml + manual)
              if o.url not in posted and not (o.code and o.code in posted)]
-    all_offers = pick_balanced(fresh, settings.MAX_OFFERS_PER_SCAN)
-    sent, delivered = await broadcast(all_offers)
+    # Grupo 1 (Shopee) e Grupo 2 (ML): cada um com seu revezamento moda+kids
+    g1 = pick_balanced([o for o in fresh if o.source != "ml"], settings.MAX_OFFERS_PER_SCAN)
+    g2 = pick_balanced([o for o in fresh if o.source == "ml"], settings.MAX_OFFERS_PER_SCAN)
+    sent1, ok1 = await broadcast(g1, settings.groups)
+    sent2, ok2 = await broadcast(g2, settings.ml_groups)
+    delivered = ok1 + [o for o in ok2 if o.url not in [d.url for d in ok1]]
     # Só marca como postado o que REALMENTE foi entregue (falha tenta de novo no próximo scan)
     for o in delivered:
         posted.add(o.url)
         if o.code:
             posted.add(o.code)
     save_posted(posted)
+    all_offers = g1 + g2
     return {"found_shopee": len(shopee), "found_ml": len(ml), "found_manual": len(manual),
-            "new": len(all_offers), "sent": sent, "failed": len(all_offers) - len(delivered),
+            "new": len(all_offers), "sent": sent1 + sent2,
+            "failed": len(all_offers) - len(delivered),
             "titles": [o.title for o in all_offers], **out}

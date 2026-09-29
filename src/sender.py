@@ -34,11 +34,11 @@ async def send_to_group(group_jid: str, offer: Offer) -> bool:
             print("send fail:", e)
             return False
 
-async def broadcast(offers: list[Offer]) -> tuple[int, list[Offer]]:
+async def broadcast(offers: list[Offer], groups: list[str] | None = None) -> tuple[int, list[Offer]]:
     """Retorna (nº msgs enviadas, ofertas entregues em ≥1 grupo)."""
     delivered: list[Offer] = []
     sent = 0
-    for g in settings.groups:
+    for g in (groups if groups is not None else settings.groups):
         for o in offers:
             if await send_to_group(g, o):
                 sent += 1

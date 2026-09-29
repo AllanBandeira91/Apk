@@ -5,7 +5,8 @@ class Settings(BaseSettings):
     EVOLUTION_API_URL: str = ""
     EVOLUTION_APIKEY: str = ""
     EVOLUTION_INSTANCE: str = "promocoes"
-    TARGET_GROUPS: str = ""  # vírgula: id1@g.us,id2@g.us
+    TARGET_GROUPS: str = ""  # grupo(s) Shopee: id1@g.us,id2@g.us
+    ML_GROUPS: str = ""  # grupo(s) Mercado Livre: id@g.us
     ML_AFFILIATE_TAG: str = ""
     ML_ACCESS_TOKEN: str = ""  # token OAuth do app ML (necessário p/ busca API)
     SHOPEE_AFFILIATE_ID: str = ""
@@ -20,6 +21,10 @@ class Settings(BaseSettings):
     @property
     def groups(self) -> list[str]:
         return [g.strip() for g in self.TARGET_GROUPS.split(",") if g.strip()]
+
+    @property
+    def ml_groups(self) -> list[str]:
+        return [g.strip() for g in self.ML_GROUPS.split(",") if g.strip()]
 
     class Config:
         env_file = ".env"

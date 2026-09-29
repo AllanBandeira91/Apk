@@ -21,7 +21,7 @@ app = FastAPI(lifespan=lifespan)
 def home():
     return f"""
     <h2>🤖 Promo Bot — Moda Crente + Brinquedos</h2>
-    <p>Grupos: {len(settings.groups)} | Intervalo: {settings.SCAN_INTERVAL_MIN}min</p>
+    <p>Grupo Shopee: {len(settings.groups)} | Grupo ML: {len(settings.ml_groups)} | Intervalo: {settings.SCAN_INTERVAL_MIN}min</p>
     <p>Evolution: {'✅ configurada' if settings.EVOLUTION_API_URL else '❌ configure EVOLUTION_API_URL'}</p>
     <a href="/scan"><button>🔍 Buscar e postar agora</button></a> |
     <a href="/preview"><button>👀 Ver prévias sem postar</button></a>
