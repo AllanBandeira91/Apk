@@ -57,12 +57,13 @@ async def run_scan() -> dict:
     fresh = [o for o in (shopee + ml + manual)
              if o.url not in posted and not (o.code and o.code in posted)]
     all_offers = pick_balanced(fresh, settings.MAX_OFFERS_PER_SCAN)
-    sent = await broadcast(all_offers)
-    for o in all_offers:
+    sent, delivered = await broadcast(all_offers)
+    # Só marca como postado o que REALMENTE foi entregue (falha tenta de novo no próximo scan)
+    for o in delivered:
         posted.add(o.url)
         if o.code:
             posted.add(o.code)
     save_posted(posted)
     return {"found_shopee": len(shopee), "found_ml": len(ml), "found_manual": len(manual),
-            "new": len(all_offers), "sent": sent,
+            "new": len(all_offers), "sent": sent, "failed": len(all_offers) - len(delivered),
             "titles": [o.title for o in all_offers], **out}
