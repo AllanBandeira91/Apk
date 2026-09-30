@@ -11,7 +11,7 @@ class Offer:
     original_price: float | None
     url: str
     image: str
-    source: str  # ml | shopee | amazon | aliexpress
+    source: str = "shopee"
     category: str = ""  # moda | brinquedos
     code: str = ""  # identidade estável do produto (ex: shopee:123). Não muda entre scans.
 

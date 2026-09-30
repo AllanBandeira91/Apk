@@ -1,10 +1,9 @@
-"""Varredura agendada: Shopee API + ML API + planilha manual -> filtra -> posta."""
+"""Varredura agendada: Shopee API + planilha manual -> filtra -> posta."""
 import json
 import pathlib
 import time
 from .config import settings
 from .filter import norm_title, titles_match
-from .scrapers.mercadolivre import scan_all as scan_ml
 from .scrapers.shopee import scan_all as scan_shopee
 from .scrapers.manual import load_manual
 from .sender import broadcast, group_history
@@ -75,14 +74,13 @@ def pick_balanced(offers: list, limit: int) -> list:
 async def run_scan() -> dict:
     out: dict = {}
     shopee = await _safe_scan(scan_shopee, "shopee_note", out)
-    ml = await _safe_scan(scan_ml, "ml_note", out)
     manual = load_manual()
     posted = load_posted()
     history = load_history()
-    # Checa o histórico REAL dos grupos antes de enviar (links + títulos)
+    # Checa o histórico REAL do grupo antes de enviar (links + títulos)
     group_urls: set = set()
     group_titles: list = []
-    for jid in settings.groups + settings.ml_groups:
+    for jid in settings.groups:
         try:
             u, t = await group_history(jid)
             group_urls |= u
@@ -99,15 +97,11 @@ async def run_scan() -> dict:
         nt = norm_title(o.title)
         return any(titles_match(nt, k) for k in known_titles)
 
-    candidates = list(shopee + ml + manual)
+    candidates = list(shopee + manual)
     fresh = [o for o in candidates if not is_dupe(o)]
     skipped = len(candidates) - len(fresh)
-    # Grupo 1 (Shopee) e Grupo 2 (ML): cada um com seu revezamento moda+kids
-    g1 = pick_balanced([o for o in fresh if o.source != "ml"], settings.MAX_OFFERS_PER_SCAN)
-    g2 = pick_balanced([o for o in fresh if o.source == "ml"], settings.MAX_OFFERS_PER_SCAN)
-    sent1, ok1 = await broadcast(g1, settings.groups)
-    sent2, ok2 = await broadcast(g2, settings.ml_groups)
-    delivered = ok1 + [o for o in ok2 if o.url not in [d.url for d in ok1]]
+    all_offers = pick_balanced(fresh, settings.MAX_OFFERS_PER_SCAN)
+    sent, delivered = await broadcast(all_offers, settings.groups)
     # Só marca como postado o que REALMENTE foi entregue (falha tenta de novo no próximo scan)
     for o in delivered:
         posted.add(o.url)
@@ -116,9 +110,8 @@ async def run_scan() -> dict:
         history[o.code or o.url] = {"t": norm_title(o.title), "ts": int(time.time())}
     save_posted(posted)
     save_history(history)
-    all_offers = g1 + g2
-    return {"found_shopee": len(shopee), "found_ml": len(ml), "found_manual": len(manual),
-            "new": len(all_offers), "sent": sent1 + sent2,
+    return {"found_shopee": len(shopee), "found_manual": len(manual),
+            "new": len(all_offers), "sent": sent,
             "failed": len(all_offers) - len(delivered),
             "skipped_dupes": skipped,
             "titles": [o.title for o in all_offers], **out}
