@@ -9,7 +9,7 @@ import json
 import pathlib
 import time
 import httpx
-from ..filter import Offer, classify
+from ..filter import Offer, classify, norm_title, titles_match
 from ..config import settings
 
 ENDPOINT = "https://open-api.affiliate.shopee.com.br/graphql"
@@ -40,7 +40,7 @@ SEARCHES = [
 ]
 
 STATE_FILE = pathlib.Path("scan_state.json")
-BATCH = 8  # buscas por scan (rodízio: cobre tudo ao longo do dia sem estourar timeout)
+BATCH = 10  # buscas por scan (rodízio: cobre tudo ao longo do dia sem estourar timeout)
 
 
 def get_searches() -> list[str]:
@@ -155,7 +155,7 @@ async def search(keyword: str, limit: int = 10, sort_type: int = 2) -> list[Offe
     return out
 
 
-async def scan_all(min_discount: int = 0, per_query: int = 5) -> list[Offer]:
+async def scan_all(min_discount: int = 0, per_query: int = 6) -> list[Offer]:
     found: list[Offer] = []
     errors: list[str] = []
     for q in get_searches():

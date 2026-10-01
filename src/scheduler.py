@@ -60,7 +60,12 @@ def pick_balanced(offers: list, limit: int) -> list:
             if len(picked) >= limit:
                 break
             if buckets[c]:
-                picked.append(buckets[c].pop(0))
+                cand = buckets[c].pop(0)
+                # os 2 do mesmo scan não podem ser parecidos entre si
+                nt = norm_title(cand.title)
+                if any(titles_match(nt, norm_title(p.title)) for p in picked):
+                    continue
+                picked.append(cand)
         i += 1
         if i > limit + 10:
             break
