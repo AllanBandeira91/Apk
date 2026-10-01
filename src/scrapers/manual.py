@@ -19,6 +19,9 @@ def load_manual() -> list[Offer]:
         title = (row.get("title") or "").strip()
         if not title:
             continue
+        raw_url = (row.get("url") or "").strip()
+        if not raw_url or "exemplo" in raw_url.lower():
+            continue  # pula placeholders/linhas de exemplo
         cat = classify(title) or (row.get("category") or "").strip() or "moda"
         if classify(title) is None and not row.get("category"):
             continue  # fora do nicho
