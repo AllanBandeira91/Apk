@@ -87,7 +87,9 @@ async def run_scan() -> dict:
             group_titles += [norm_title(x) for x in t]
         except Exception:
             continue
-    known_titles = [v["t"] if isinstance(v, dict) else v for v in history.values()] + group_titles
+    known_titles = ([v["t"] for v in history.values()
+                     if isinstance(v, dict) and v.get("ts", 0) > time.time() - 30 * 86400]
+                    + group_titles)
 
     def is_dupe(o) -> bool:
         # 1) link ou código já enviado

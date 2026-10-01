@@ -121,14 +121,15 @@ def norm_title(t: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9]+", " ", t)).strip()
 
 
-def titles_match(a: str, b: str, thresh: float = 0.88) -> bool:
-    """True se títulos (já normalizados) são o mesmo item ou quase."""
+def titles_match(a: str, b: str, thresh: float = 0.92) -> bool:
+    """True se títulos (já normalizados) são o mesmo item ou quase.
+    Mesmo produto = pego pelo código; aqui só barra listagens quase idênticas."""
     if not a or not b or a == b:
         return bool(a and a == b)
     if len(a) < 8 or len(b) < 8:
         return False
     short, long = (a, b) if len(a) <= len(b) else (b, a)
-    if len(short) >= 10 and short in long and len(short) / len(long) > 0.6:
+    if len(short) >= 12 and short in long and len(short) / len(long) > 0.75:
         return True
     return SequenceMatcher(None, a, b).ratio() >= thresh
 

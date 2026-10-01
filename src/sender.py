@@ -34,7 +34,7 @@ async def send_to_group(group_jid: str, offer: Offer) -> bool:
             print("send fail:", e)
             return False
 
-async def group_history(jid: str, limit: int = 100) -> tuple[set, list]:
+async def group_history(jid: str, limit: int = 40) -> tuple[set, list]:
     """Lê msgs recentes do grupo (best-effort): retorna (urls, títulos)."""
     import re as _re
     if not settings.EVOLUTION_API_URL:
