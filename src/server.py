@@ -1,5 +1,8 @@
 """Painel + API p/ Render. Rota /scan dispara varredura manual."""
+import json
+import pathlib
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -7,10 +10,14 @@ from .config import settings
 from .scheduler import run_scan
 
 sched = AsyncIOScheduler()
+LAST = pathlib.Path("last_run.json")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    sched.add_job(run_scan, "interval", minutes=settings.SCAN_INTERVAL_MIN, id="scan")
+    sched.add_job(run_scan, "interval", minutes=settings.SCAN_INTERVAL_MIN, id="scan",
+                  misfire_grace_time=300, coalesce=True, max_instances=1)
+    # 1 scan logo ao acordar (cold boot não espera o intervalo cheio)
+    sched.add_job(run_scan, "date", run_date=datetime.now() + timedelta(seconds=30), id="boot")
     sched.start()
     yield
     sched.shutdown()
@@ -19,9 +26,15 @@ app = FastAPI(lifespan=lifespan)
 
 @app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def home():
+    try:
+        last = json.loads(LAST.read_text())
+        ts = datetime.fromtimestamp(last.get("ts", 0)).strftime("%d/%m %H:%M")
+        info = f"Último scan: {ts} (enviados: {last.get('sent', 0)})"
+    except Exception:
+        info = "Último scan: ainda nenhum desde o boot"
     return f"""
     <h2>🤖 Promo Bot — Ofertas Shopee</h2>
-    <p>Grupos: {len(settings.groups)} | Intervalo: {settings.SCAN_INTERVAL_MIN}min</p>
+    <p>Grupos: {len(settings.groups)} | Intervalo: {settings.SCAN_INTERVAL_MIN}min | {info}</p>
     <p>Evolution: {'✅ configurada' if settings.EVOLUTION_API_URL else '❌ configure EVOLUTION_API_URL'}</p>
     <a href="/scan"><button>🔍 Buscar e postar agora</button></a> |
     <a href="/preview"><button>👀 Ver prévias sem postar</button></a>

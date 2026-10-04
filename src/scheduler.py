@@ -117,6 +117,11 @@ async def run_scan() -> dict:
         history[o.code or o.url] = {"t": norm_title(o.title), "ts": int(time.time())}
     save_posted(posted)
     save_history(history)
+    try:
+        pathlib.Path("last_run.json").write_text(json.dumps(
+            {"ts": int(time.time()), "sent": sent}))
+    except Exception:
+        pass
     return {"found_shopee": len(shopee), "found_manual": len(manual),
             "new": len(all_offers), "sent": sent,
             "failed": len(all_offers) - len(delivered),
