@@ -137,12 +137,12 @@ def _to_offer(n: dict, url: str) -> Offer | None:
     )
 
 
-async def search(keyword: str, limit: int = 10, sort_type: int = 2) -> list[Offer]:
+async def search(keyword: str, limit: int = 10, sort_type: int = 2, page: int = 1) -> list[Offer]:
     if not settings.SHOPEE_APPID or not settings.SHOPEE_SECRET:
         raise RuntimeError("Shopee: configure SHOPEE_APPID e SHOPEE_SECRET")
     out: list[Offer] = []
     async with httpx.AsyncClient(timeout=25) as c:
-        data = await _gql(c, QUERY, {"keyword": keyword, "sortType": sort_type, "page": 1, "limit": limit})
+        data = await _gql(c, QUERY, {"keyword": keyword, "sortType": sort_type, "page": page, "limit": limit})
         nodes = (data.get("productOfferV2") or {}).get("nodes") or []
         for n in nodes:
             base = n.get("offerLink") or n.get("productLink") or ""
@@ -156,11 +156,23 @@ async def search(keyword: str, limit: int = 10, sort_type: int = 2) -> list[Offe
 
 
 async def scan_all(min_discount: int = 0, per_query: int = 6) -> list[Offer]:
+    # Alterna página 1/2 a cada scan: dobra o universo sem pesar o scan
+    try:
+        st = json.loads(STATE_FILE.read_text())
+    except Exception:
+        st = {}
+    page = int(st.get("page", 1))
+    page = 2 if page == 1 else 1
+    try:
+        st["page"] = page
+        STATE_FILE.write_text(json.dumps(st))
+    except Exception:
+        pass
     found: list[Offer] = []
     errors: list[str] = []
     for q in get_searches():
         try:
-            found += await search(q, per_query)
+            found += await search(q, per_query, page=page)
         except Exception as e:
             errors.append(str(e))
     if min_discount:
