@@ -21,7 +21,16 @@ class Offer:
             return 0.0
         return round((1 - self.price / self.original_price) * 100, 1)
 
-# Roupa/quase-pelada: sempre bloqueia
+# Sex shop / pornográfico: sempre bloqueia
+SEX_BLOCK = [
+    "vibrador", "plug anal", "masturbador", "boneca inflavel", "boneca inflável",
+    "gel excitante", "excitante", "afrodisiaco", "afrodisíaco", "viagra",
+    "tadalafila", "sildenafil", "sex shop", "erotico", "erótico",
+    "porno", "pornô", "xxx", "acompanhante", "fetiche", "bdsm",
+    "algema", "massagem tantrica", "massagem tântrica", "onlyfans",
+]
+
+# Roupa quase-pelada: sempre bloqueia
 REVEAL_BLOCK = [
     "biquini", "biquíni", "maiô", "sunga",
     "lingerie", "calcinha", "sutiã", "sutia", "espartilho", "cinta liga",
@@ -91,7 +100,7 @@ def classify(title: str) -> str | None:
     """Retorna 'moda' | 'calcados' | 'acessorios' | 'kids' | 'bebe' | None."""
     t = title.lower()
 
-    if _has(t, REVEAL_BLOCK):
+    if _has(t, REVEAL_BLOCK) or _has(t, SEX_BLOCK):
         return None
     # Bebê primeiro (tênis/sapatinho de bebê é bebê, não calçado)
     if _has(t, BEBE_OK) or re.search(r"\bbeb[eê]\b|\brec[eé]m-nascido\b", t):
@@ -106,12 +115,12 @@ def classify(title: str) -> str | None:
         return "kids"
     if _has(t, KID_CTX) and _has(t, ["brinquedo", "jogo", "diversao", "diversão"]):
         return "kids"
-    return None
+    return "geral"  # todo o resto passa (só barra putaria/quase-pelada)
 
 
 LABELS = {"moda": ("👗", "MODA"), "calcados": ("👟", "CALÇADOS"),
           "acessorios": ("⌚", "ACESSÓRIOS"), "kids": ("🧸", "KIDS"),
-          "bebe": ("🍼", "BEBÊ")}
+          "bebe": ("🍼", "BEBÊ"), "geral": ("🏷️", "GERAL")}
 
 
 def norm_title(t: str) -> str:

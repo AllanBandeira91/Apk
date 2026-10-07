@@ -37,6 +37,12 @@ SEARCHES = [
     "bermuda masculina",
     "tenis masculino",
     "bone masculino",
+    "fone bluetooth",
+    "air fryer",
+    "liquidificador",
+    "jogo de panelas",
+    "furadeira",
+    "ventilador",
 ]
 
 STATE_FILE = pathlib.Path("scan_state.json")
