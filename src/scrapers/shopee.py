@@ -15,6 +15,7 @@ from ..config import settings
 ENDPOINT = "https://open-api.affiliate.shopee.com.br/graphql"
 
 SEARCHES = [
+    # moda / calçados / acessórios
     "vestido feminino",
     "blusa feminina",
     "tenis feminino",
@@ -24,6 +25,16 @@ SEARCHES = [
     "relogio feminino",
     "relogio masculino",
     "carteira masculina",
+    "camisa masculina",
+    "bermuda masculina",
+    "tenis masculino",
+    "bone masculino",
+    "conjunto feminino",
+    "conjunto masculino",
+    "conjunto infantil",
+    "biquini",
+    "sunga",
+    # bebê / kids
     "roupa bebe",
     "sapatinho bebe",
     "relogio infantil",
@@ -33,17 +44,58 @@ SEARCHES = [
     "boneca",
     "carrinho controle remoto",
     "jogo educativo",
-    "camisa masculina",
-    "bermuda masculina",
-    "tenis masculino",
-    "bone masculino",
+    # eletrônicos / gamer
     "fone bluetooth",
+    "celular smartphone",
+    "notebook",
+    "smartwatch",
+    "caixa de som bluetooth",
+    "teclado gamer",
+    "mouse gamer",
+    "cadeira gamer",
+    "smart tv",
+    "echo dot alexa",
+    # casa / cozinha
     "air fryer",
     "liquidificador",
     "jogo de panelas",
-    "furadeira",
+    "panela de pressao eletrica",
+    "microondas",
     "ventilador",
+    "furadeira",
+    "kit ferramentas",
+    "guarda roupa",
+    "jogo de cama",
+    "garrafa termica",
+    # casa extra / varanda
+    "churrasqueira",
+    "guarda sol",
+    "cortina",
+    "tapete",
+    "lustre",
+    # carro / automotivo
+    "som automotivo",
+    "central multimidia",
+    "suporte celular carro",
+    "tapete automotivo",
+    "kit limpeza automotiva",
+    # beleza / saúde
+    "perfume feminino",
+    "perfume masculino",
+    "perfume importado",
+    "kit maquiagem",
+    "skincare",
+    "secador de cabelo",
+    "whey protein",
+    "creatina",
+    "bicicleta",
+    "mochila",
 ]
+
+# Keywords extras via env (SHOPEE_SEARCHES="celular,notebook,..."): entram no rodízio junto.
+def all_searches() -> list[str]:
+    extra = [s.strip() for s in (settings.SHOPEE_SEARCHES or "").split(",") if s.strip()]
+    return SEARCHES + [e for e in extra if e.lower() not in {s.lower() for s in SEARCHES}]
 
 STATE_FILE = pathlib.Path("scan_state.json")
 BATCH = 10  # buscas por scan (rodízio: cobre tudo ao longo do dia sem estourar timeout)
@@ -51,14 +103,15 @@ BATCH = 10  # buscas por scan (rodízio: cobre tudo ao longo do dia sem estourar
 
 def get_searches() -> list[str]:
     """Rodízio das buscas: cada scan pega um lote diferente."""
+    pool = all_searches()
     try:
         st = json.loads(STATE_FILE.read_text())
-        off = int(st.get("offset", 0)) % len(SEARCHES)
+        off = int(st.get("offset", 0)) % len(pool)
     except Exception:
         st, off = {}, 0
-    batch = [SEARCHES[(off + i) % len(SEARCHES)] for i in range(BATCH)]
+    batch = [pool[(off + i) % len(pool)] for i in range(BATCH)]
     try:
-        st["offset"] = (off + BATCH) % len(SEARCHES)
+        st["offset"] = (off + BATCH) % len(pool)
         STATE_FILE.write_text(json.dumps(st))
     except Exception:
         pass

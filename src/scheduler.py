@@ -1,10 +1,12 @@
-"""Varredura agendada: Shopee API + planilha manual -> filtra -> posta."""
+"""Varredura agendada: Shopee API + TikTok Shop API + planilha manual -> filtra -> posta."""
 import json
 import pathlib
 import time
 from .config import settings
 from .filter import norm_title, titles_match
 from .scrapers.shopee import scan_all as scan_shopee
+from .scrapers.tiktok import scan_all as scan_tiktok
+from .scrapers.ecomobi import scan_all as scan_ecomobi
 from .scrapers.manual import load_manual
 from .sender import broadcast, group_history
 
@@ -79,6 +81,8 @@ def pick_balanced(offers: list, limit: int) -> list:
 async def run_scan() -> dict:
     out: dict = {}
     shopee = await _safe_scan(scan_shopee, "shopee_note", out)
+    tiktok = await _safe_scan(scan_tiktok, "tiktok_note", out)
+    ecomobi = await _safe_scan(scan_ecomobi, "ecomobi_note", out)
     manual = load_manual()
     posted = load_posted()
     history = load_history()
@@ -104,7 +108,7 @@ async def run_scan() -> dict:
         nt = norm_title(o.title)
         return any(titles_match(nt, k) for k in known_titles)
 
-    candidates = list(shopee + manual)
+    candidates = list(shopee + tiktok + ecomobi + manual)
     fresh = [o for o in candidates if not is_dupe(o)]
     skipped = len(candidates) - len(fresh)
     all_offers = pick_balanced(fresh, settings.MAX_OFFERS_PER_SCAN)
@@ -122,7 +126,7 @@ async def run_scan() -> dict:
             {"ts": int(time.time()), "sent": sent}))
     except Exception:
         pass
-    return {"found_shopee": len(shopee), "found_manual": len(manual),
+    return {"found_shopee": len(shopee), "found_tiktok": len(tiktok), "found_ecomobi": len(ecomobi), "found_manual": len(manual),
             "new": len(all_offers), "sent": sent,
             "failed": len(all_offers) - len(delivered),
             "skipped_dupes": skipped,

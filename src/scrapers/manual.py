@@ -4,6 +4,8 @@ Formato ofertas.csv (cabeçalho):
 title,price,original_price,url,image,source
 Ex:
 Vestido Longo Evangelica Floral,89.90,129.90,https://seulinkafiliado.com/x,https://img...,shopee
+Fone Bluetooth TWS,59.90,99.90,https://vt.tiktok.com/xxx/,https://img...,tiktok
+Qualquer categoria passa — só bloqueia adulto/quase-pelado (ver filter.py).
 """
 import csv, pathlib
 from ..filter import Offer, classify

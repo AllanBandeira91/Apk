@@ -73,13 +73,29 @@ def qr():
 @app.get("/preview")
 async def preview():
     from .scrapers.shopee import scan_all as scan_shopee
+    from .scrapers.tiktok import scan_all as scan_tiktok
+    from .scrapers.ecomobi import scan_all as scan_ecomobi
     from .scrapers.manual import load_manual
+    offers, srcs = [], []
     try:
-        offers = await scan_shopee(min_discount=0, per_query=5)
-        src = "shopee-live"
+        offers += await scan_shopee(min_discount=0, per_query=5)
+        srcs.append("shopee-live")
     except Exception as e:
+        srcs.append(f"shopee-erro ({e})")
+    try:
+        offers += await scan_tiktok(min_discount=0, per_query=5)
+        srcs.append("tiktok-live")
+    except Exception as e:
+        srcs.append(f"tiktok-fallback ({e})")
+    try:
+        offers += await scan_ecomobi(min_discount=0, per_query=5)
+        srcs.append("ecomobi-live")
+    except Exception as e:
+        srcs.append(f"ecomobi ({e})")
+    if not offers:
         offers = load_manual()
-        src = f"manual-fallback ({e})"
+        srcs.append("manual-fallback")
+    src = "+".join(srcs)
     from .filter import format_msg
     return {"source": src, "count": len(offers),
             "items": [{"title": o.title, "price": o.price, "discount": o.discount_pct,

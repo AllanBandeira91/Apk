@@ -1,4 +1,4 @@
-"""Modelo + filtro: moda geral (sem roupa quase-pelada) + bebê/brinquedos."""
+"""Modelo + filtro: qualquer categoria passa, exceto conteúdo adulto/quase-pelado."""
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -21,21 +21,23 @@ class Offer:
             return 0.0
         return round((1 - self.price / self.original_price) * 100, 1)
 
-# Sex shop / pornográfico: sempre bloqueia
+# Sex shop / pornográfico / +18: sempre bloqueia
 SEX_BLOCK = [
     "vibrador", "plug anal", "masturbador", "boneca inflavel", "boneca inflável",
     "gel excitante", "excitante", "afrodisiaco", "afrodisíaco", "viagra",
     "tadalafila", "sildenafil", "sex shop", "erotico", "erótico",
-    "porno", "pornô", "xxx", "acompanhante", "fetiche", "bdsm",
+    "porno", "pornô", "pornografia", "xxx", "acompanhante", "fetiche", "bdsm",
     "algema", "massagem tantrica", "massagem tântrica", "onlyfans",
+    "sexy", "sensual", "sedução", "seducao", "provocante",
+    "camisinha", "preservativo", "lubrificante intimo", "lubrificante íntimo",
+    "brinquedo sexual", "brinquedos sexuais",
 ]
 
-# Roupa quase-pelada: sempre bloqueia
+# Lingerie / quase-pelado: bloqueia (biquíni, sunga e maiô PODEM passar)
 REVEAL_BLOCK = [
-    "biquini", "biquíni", "maiô", "sunga",
-    "lingerie", "calcinha", "sutiã", "sutia", "espartilho", "cinta liga",
-    "transparente", "decote profundo", "decotad", "fenda alta",
-    "fio dental", "body cavado", "tomara que caia", "fantasia sexy",
+    "lingerie", "langerie", "calcinha", "sutiã", "sutia",
+    "espartilho", "cinta liga", "body cavado",
+    "decote profundo", "fenda alta",
 ]
 
 # Calçados (adulto e infantil — tênis não é brinquedo)
@@ -59,6 +61,7 @@ MODA_OK = [
     "calça", "calca", "short", "bermuda", "legging", "jaqueta", "casaco",
     "moletom", "conjunto", "macacão", "macacao", "jardineira", "pijama",
     "touca", "gorro", "meia",
+    "biquini", "biquíni", "sunga", "maiô",
 ]
 
 # Bebê
@@ -115,7 +118,7 @@ def classify(title: str) -> str | None:
         return "kids"
     if _has(t, KID_CTX) and _has(t, ["brinquedo", "jogo", "diversao", "diversão"]):
         return "kids"
-    return "geral"  # todo o resto passa (só barra putaria/quase-pelada)
+    return "geral"  # qualquer outro produto passa (só barra putaria/quase-pelada)
 
 
 LABELS = {"moda": ("👗", "MODA"), "calcados": ("👟", "CALÇADOS"),

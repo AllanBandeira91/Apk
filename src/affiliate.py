@@ -1,8 +1,10 @@
-"""Injeta seu ID de afiliado Shopee nos links manuais."""
+"""Injeta seu ID de afiliado nos links manuais (Shopee). TikTok passa direto."""
 from urllib.parse import urlencode, urlparse, parse_qsl, urlunparse
 from .config import settings
 
 def tag_url(url: str, source: str) -> str:
+    if (source or "").strip().lower() == "tiktok":
+        return url  # link vt.tiktok.com da vitrine já carrega sua comissão
     try:
         u = urlparse(url)
         q = dict(parse_qsl(u.query))
