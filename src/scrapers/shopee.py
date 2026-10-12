@@ -90,6 +90,19 @@ SEARCHES = [
     "creatina",
     "bicicleta",
     "mochila",
+    # natal
+    "arvore de natal",
+    "enfeites de natal",
+    "pisca pisca natal",
+    "guirlanda de natal",
+    "papai noel",
+    "presepio de natal",
+    "luzes de natal",
+    "bola de natal",
+    "meia de natal",
+    "kit decoracao natal",
+    "cesta de natal",
+    "presente de natal",
 ]
 
 # Keywords extras via env (SHOPEE_SEARCHES="celular,notebook,..."): entram no rodízio junto.
