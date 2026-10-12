@@ -90,20 +90,18 @@ SEARCHES = [
     "creatina",
     "bicicleta",
     "mochila",
-    # natal
+]
+
+# Buscas de Natal: entram em TODO scan (prioridade), além do rodízio normal.
+NATAL = [
     "arvore de natal",
-    "enfeites de natal",
     "pisca pisca natal",
     "guirlanda de natal",
     "papai noel",
-    "presepio de natal",
+    "enfeites de natal",
     "luzes de natal",
-    "bola de natal",
-    "meia de natal",
-    "kit decoracao natal",
-    "cesta de natal",
-    "presente de natal",
 ]
+NATAL_REFRESH = 3  # quantos termos natalinos entram por scan
 
 # Keywords extras via env (SHOPEE_SEARCHES="celular,notebook,..."): entram no rodízio junto.
 def all_searches() -> list[str]:
@@ -128,7 +126,9 @@ def get_searches() -> list[str]:
         STATE_FILE.write_text(json.dumps(st))
     except Exception:
         pass
-    return batch
+    # Reforço de Natal: 3 buscas natalinas em TODO scan (rotacionam entre si)
+    natal = [NATAL[(off + i) % len(NATAL)] for i in range(min(NATAL_REFRESH, len(NATAL)))]
+    return natal + [s for s in batch if s not in natal]
 
 QUERY = """
 query($keyword: String, $sortType: Int, $page: Int, $limit: Int) {

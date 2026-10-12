@@ -1,6 +1,7 @@
 """Varredura agendada: Shopee API + TikTok Shop API + planilha manual -> filtra -> posta."""
 import json
 import pathlib
+import re
 import time
 from .config import settings
 from .filter import norm_title, titles_match
@@ -78,6 +79,15 @@ def pick_balanced(offers: list, limit: int) -> list:
         pass
     return picked
 
+# Prioridade de Natal: titulos com esses termos ganham vaga garantida no scan
+# (cuidado: "pre natal" de gestante NAO e natal — ignoramos esse caso)
+_NATAL_RE = re.compile(r"(?<!pre )\bnatal\b|\bnoel\b|\bpinheiro\b")
+
+
+def is_natal(o) -> bool:
+    return bool(_NATAL_RE.search(norm_title(o.title)))
+
+
 async def run_scan() -> dict:
     out: dict = {}
     shopee = await _safe_scan(scan_shopee, "shopee_note", out)
@@ -111,7 +121,15 @@ async def run_scan() -> dict:
     candidates = list(shopee + tiktok + ecomobi + manual)
     fresh = [o for o in candidates if not is_dupe(o)]
     skipped = len(candidates) - len(fresh)
-    all_offers = pick_balanced(fresh, settings.MAX_OFFERS_PER_SCAN)
+    # Prioridade de Natal: garante 1 item natalino por scan (se houver)
+    natal = [o for o in fresh if is_natal(o)]
+    restante = [o for o in fresh if not is_natal(o)]
+    all_offers: list = []
+    if natal:
+        all_offers.append(natal.pop(0))
+        nt = norm_title(all_offers[0].title)
+        restante = [o for o in restante if not titles_match(nt, norm_title(o.title))]
+    all_offers += pick_balanced(restante, settings.MAX_OFFERS_PER_SCAN - len(all_offers))
     sent, delivered = await broadcast(all_offers, settings.groups)
     # Só marca como postado o que REALMENTE foi entregue (falha tenta de novo no próximo scan)
     for o in delivered:
