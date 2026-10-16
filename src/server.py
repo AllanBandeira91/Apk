@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from .config import settings
-from .scheduler import run_scan
+from .scheduler import run_scan, announce_open, announce_close
 
 sched = AsyncIOScheduler()
 LAST = pathlib.Path("last_run.json")
@@ -18,6 +18,11 @@ async def lifespan(app: FastAPI):
                   misfire_grace_time=300, coalesce=True, max_instances=1)
     # 1 scan logo ao acordar (cold boot não espera o intervalo cheio)
     sched.add_job(run_scan, "date", run_date=datetime.now() + timedelta(seconds=30), id="boot")
+    # Avisos da janela de promoções (09:00 - 00:00)
+    sched.add_job(announce_open, "cron", hour=8, minute=50, id="aviso_abertura",
+                  misfire_grace_time=180, coalesce=True)
+    sched.add_job(announce_close, "cron", hour=0, minute=0, id="aviso_fechamento",
+                  misfire_grace_time=180, coalesce=True)
     sched.start()
     yield
     sched.shutdown()
@@ -44,7 +49,8 @@ def home():
 
 @app.get("/scan")
 async def scan():
-    return await run_scan()
+    # botão manual: força mesmo fora da janela (uso consciente do dono)
+    return await run_scan(force=True)
 
 @app.get("/qr", response_class=HTMLResponse)
 def qr():

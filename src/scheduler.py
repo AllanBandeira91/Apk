@@ -3,13 +3,14 @@ import json
 import pathlib
 import re
 import time
+from datetime import datetime
 from .config import settings
 from .filter import norm_title, titles_match
 from .scrapers.shopee import scan_all as scan_shopee
 from .scrapers.tiktok import scan_all as scan_tiktok
 from .scrapers.ecomobi import scan_all as scan_ecomobi
 from .scrapers.manual import load_manual
-from .sender import broadcast, group_history
+from .sender import broadcast, group_history, send_plain_text
 
 POSTED = pathlib.Path("posted.json")
 HISTORY = pathlib.Path("sent_history.json")  # chave(url/código) -> título normalizado
@@ -88,7 +89,44 @@ def is_natal(o) -> bool:
     return bool(_NATAL_RE.search(norm_title(o.title)))
 
 
-async def run_scan() -> dict:
+# ---- Janela de postagem: promoções só das 09:00 às 00:00 (madrugada silenciosa)
+POST_START_HOUR = 9
+POST_END_HOUR = 24  # 00:00 (exclusivo): horas 9..23 postam; 0..8 em silêncio
+
+
+def dentro_da_janela(agora: datetime | None = None) -> bool:
+    h = (agora or datetime.now()).hour
+    return POST_START_HOUR <= h < POST_END_HOUR
+
+
+AVISO_ABERTURA = (
+    "⏰ *ATENÇÃO, PESSOAL!*\n\n"
+    "As promoções se iniciam em *10 MINUTOS*! 🛒\n"
+    "Deixa o dedinho pronto que vem oferta boa! 🔥"
+)
+
+AVISO_FECHAMENTO = (
+    "🌙 *PROMOÇÕES ENCERRADAS POR HOJE!*\n\n"
+    "Obrigado a quem aproveitou as ofertas! 💛\n"
+    "Voltamos amanhã às *09:00* com promoções novas. Até lá! 💤🎁"
+)
+
+
+async def announce_open():
+    n = await send_plain_text(AVISO_ABERTURA)
+    print(f"[aviso] abertura enviada ({n} grupo(s))", flush=True)
+
+
+async def announce_close():
+    n = await send_plain_text(AVISO_FECHAMENTO)
+    print(f"[aviso] fechamento enviado ({n} grupo(s))", flush=True)
+
+
+async def run_scan(force: bool = False) -> dict:
+    agora = datetime.now()
+    if not force and not dentro_da_janela(agora):
+        return {"paused": True, "hora": agora.strftime("%H:%M"),
+                "info": "fora da janela (09:00-00:00): nada foi enviado"}
     out: dict = {}
     shopee = await _safe_scan(scan_shopee, "shopee_note", out)
     tiktok = await _safe_scan(scan_tiktok, "tiktok_note", out)

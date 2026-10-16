@@ -83,3 +83,26 @@ async def broadcast(offers: list[Offer], groups: list[str] | None = None) -> tup
                 if all(o.code != d.code or not o.code for d in delivered) and o.url not in [d.url for d in delivered]:
                     delivered.append(o)
     return sent, delivered
+
+
+async def send_plain_text(text: str) -> int:
+    """Envia um texto simples (aviso) para todos os grupos. Retorna nº entregues."""
+    if not settings.EVOLUTION_API_URL:
+        print(f"[DRY-text] {text[:60]}")
+        return 0
+    base = settings.EVOLUTION_API_URL.rstrip("/")
+    inst = settings.EVOLUTION_INSTANCE
+    ok = 0
+    async with httpx.AsyncClient(timeout=30) as c:
+        for g in settings.groups:
+            try:
+                r = await c.post(
+                    f"{base}/message/sendText/{inst}",
+                    headers=evolution_headers(),
+                    json={"number": g, "text": text},
+                )
+                if r.status_code < 300:
+                    ok += 1
+            except Exception as e:
+                print("send_plain fail:", e)
+    return ok
