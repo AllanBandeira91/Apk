@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     SCAN_INTERVAL_MIN: int = 10
     MAX_OFFERS_PER_SCAN: int = 2
     MIN_DISCOUNT_PCT: int = 20
+    # Reciclagem: uma oferta pode VOLTAR depois de N dias (evita "secar" o grupo
+    # quando a Shopee repete os mesmos resultados de busca)
+    REPOST_AFTER_DAYS: int = 4
 
     @property
     def groups(self) -> list[str]:

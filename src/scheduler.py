@@ -15,16 +15,19 @@ from .sender import broadcast, group_history, send_plain_text
 POSTED = pathlib.Path("posted.json")
 HISTORY = pathlib.Path("sent_history.json")  # chave(url/código) -> título normalizado
 
-def load_posted() -> set:
+def load_posted() -> list:
+    """LRU por inserção: só o entregue RECENTEMENTE bloqueia (antigos podem voltar)."""
     if POSTED.exists():
         try:
-            return set(json.loads(POSTED.read_text()))
+            d = json.loads(POSTED.read_text())
+            return list(d) if isinstance(d, list) else []
         except Exception:
-            return set()
-    return set()
+            return []
+    return []
 
-def save_posted(urls: set):
-    POSTED.write_text(json.dumps(sorted(urls)[-500:]))
+def save_posted(urls: list):
+    # dedup preservando ordem (mais recentes no fim) e descartando os mais antigos
+    POSTED.write_text(json.dumps(list(dict.fromkeys(urls))[-1000:]))
 
 def load_history() -> dict:
     if HISTORY.exists():
@@ -35,7 +38,7 @@ def load_history() -> dict:
     return {}
 
 def save_history(h: dict):
-    items = sorted(h.items(), key=lambda kv: kv[1].get("ts", 0) if isinstance(kv[1], dict) else 0)[-2000:]
+    items = sorted(h.items(), key=lambda kv: kv[1].get("ts", 0) if isinstance(kv[1], dict) else 0)[-5000:]
     HISTORY.write_text(json.dumps(dict(items), ensure_ascii=False))
 
 async def _safe_scan(fn, key: str, out: dict) -> list:
@@ -144,15 +147,23 @@ async def run_scan(force: bool = False) -> dict:
             group_titles += [norm_title(x) for x in t]
         except Exception:
             continue
+    # Reciclagem: bloqueia só o que foi enviado nos últimos REPOST_AFTER_DAYS dias;
+    # depois disso a oferta PODE VOLTAR — sem isso o grupo "seca", pois a Shopee
+    # retorna os mesmos itens nas buscas e tudo vira "duplicado".
+    recorte = time.time() - settings.REPOST_AFTER_DAYS * 86400
     known_titles = ([v["t"] for v in history.values()
-                     if isinstance(v, dict) and v.get("ts", 0) > time.time() - 30 * 86400]
+                     if isinstance(v, dict) and v.get("ts", 0) > recorte]
                     + group_titles)
 
     def is_dupe(o) -> bool:
-        # 1) link ou código já enviado
-        if o.url in posted or o.url in group_urls or (o.code and o.code in posted):
+        # 1) enviado há pouco? (histórico local com data — recicla após a janela)
+        ev = history.get(o.code or o.url)
+        if isinstance(ev, dict) and ev.get("ts", 0) > recorte:
             return True
-        # 2) título igual ou quase igual a algo já postado no grupo
+        # 2) entregue recentemente (LRU) ou link visto nas últimas msgs do grupo
+        if o.url in posted or (o.code and o.code in posted) or o.url in group_urls:
+            return True
+        # 3) título igual ou quase igual a algo recente
         nt = norm_title(o.title)
         return any(titles_match(nt, k) for k in known_titles)
 
