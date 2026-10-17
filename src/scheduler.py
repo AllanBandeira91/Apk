@@ -193,8 +193,15 @@ async def run_scan(force: bool = False) -> dict:
             {"ts": int(time.time()), "sent": sent}))
     except Exception:
         pass
-    return {"found_shopee": len(shopee), "found_tiktok": len(tiktok), "found_ecomobi": len(ecomobi), "found_manual": len(manual),
-            "new": len(all_offers), "sent": sent,
-            "failed": len(all_offers) - len(delivered),
-            "skipped_dupes": skipped,
-            "titles": [o.title for o in all_offers], **out}
+    res = {"found_shopee": len(shopee), "found_tiktok": len(tiktok), "found_ecomobi": len(ecomobi), "found_manual": len(manual),
+           "new": len(all_offers), "sent": sent,
+           "failed": len(all_offers) - len(delivered),
+           "skipped_dupes": skipped,
+           "titles": [o.title for o in all_offers], **out}
+    # log detalhado: de onde vieram, quantas novas, quantas enviadas, quantas falharam
+    print(f"[scan] {agora:%d/%m %H:%M} | shopee={len(shopee)} tiktok={len(tiktok)} ecomobi={len(ecomobi)} manual={len(manual)}"
+          f" | novas={res['new']} enviadas={sent} falhas={res['failed']} dupes_ignoradas={skipped}",
+          flush=True)
+    if res["failed"]:
+        print(f"[scan]   falharam: {[o.title[:40] for o in all_offers if o not in delivered]}", flush=True)
+    return res
