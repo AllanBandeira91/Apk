@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Reciclagem: uma oferta pode VOLTAR depois de N dias (evita "secar" o grupo
     # quando a Shopee repete os mesmos resultados de busca)
     REPOST_AFTER_DAYS: int = 4
+    # Prioridade de Natal: quantos slots cada scan garante p/ itens natalinos
+    # (com MAX=2, o padrão 1 = metade de todo scan é natalina 🎄)
+    NATAL_POR_SCAN: int = 1
 
     @property
     def groups(self) -> list[str]:

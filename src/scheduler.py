@@ -170,14 +170,17 @@ async def run_scan(force: bool = False) -> dict:
     candidates = list(shopee + tiktok + ecomobi + manual)
     fresh = [o for o in candidates if not is_dupe(o)]
     skipped = len(candidates) - len(fresh)
-    # Prioridade de Natal: garante 1 item natalino por scan (se houver)
-    natal = [o for o in fresh if is_natal(o)]
+    # Prioridade de Natal: garante NATAL_POR_SCAN itens natalinos por scan (se houver),
+    # preferindo os com MAIOR DESCONTO; os demais slots ficam com o resto das categorias
+    natal = sorted((o for o in fresh if is_natal(o)),
+                   key=lambda o: o.discount_pct, reverse=True)
     restante = [o for o in fresh if not is_natal(o)]
     all_offers: list = []
-    if natal:
-        all_offers.append(natal.pop(0))
-        nt = norm_title(all_offers[0].title)
-        restante = [o for o in restante if not titles_match(nt, norm_title(o.title))]
+    while natal and len(all_offers) < min(settings.NATAL_POR_SCAN, settings.MAX_OFFERS_PER_SCAN):
+        o = natal.pop(0)
+        all_offers.append(o)
+        nt = norm_title(o.title)
+        restante = [x for x in restante if not titles_match(nt, norm_title(x.title))]
     all_offers += pick_balanced(restante, settings.MAX_OFFERS_PER_SCAN - len(all_offers))
     sent, delivered = await broadcast(all_offers, settings.groups)
     # Só marca como postado o que REALMENTE foi entregue (falha tenta de novo no próximo scan)
@@ -200,7 +203,8 @@ async def run_scan(force: bool = False) -> dict:
            "titles": [o.title for o in all_offers], **out}
     # log detalhado: de onde vieram, quantas novas, quantas enviadas, quantas falharam
     print(f"[scan] {agora:%d/%m %H:%M} | shopee={len(shopee)} tiktok={len(tiktok)} ecomobi={len(ecomobi)} manual={len(manual)}"
-          f" | novas={res['new']} enviadas={sent} falhas={res['failed']} dupes_ignoradas={skipped}",
+          f" | novas={res['new']} enviadas={sent} falhas={res['failed']} dupes_ignoradas={skipped}"
+          f" | natal={sum(1 for o in all_offers if is_natal(o))}",
           flush=True)
     if res["failed"]:
         print(f"[scan]   falharam: {[o.title[:40] for o in all_offers if o not in delivered]}", flush=True)
