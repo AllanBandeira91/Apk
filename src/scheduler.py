@@ -182,9 +182,9 @@ async def run_scan(force: bool = False) -> dict:
     sent, delivered = await broadcast(all_offers, settings.groups)
     # Só marca como postado o que REALMENTE foi entregue (falha tenta de novo no próximo scan)
     for o in delivered:
-        posted.add(o.url)
+        posted.append(o.url)
         if o.code:
-            posted.add(o.code)
+            posted.append(o.code)
         history[o.code or o.url] = {"t": norm_title(o.title), "ts": int(time.time())}
     save_posted(posted)
     save_history(history)
